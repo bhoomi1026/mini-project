@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <math.h>
+
+#define NUM_ROBOTS 4
+#define SAFE_DIST 2.0f
+#define STEP_SIZE 0.5f
+#define MAX_STEPS 5
+
+// Structure representing a single autonomous robot
+typedef struct {
+    int id;
+    float x;
+    float y;
+} Robot;
+
+// Function to calculate Euclidean distance between two points
+float getDistance(float x1, float y1, float x2, float y2) {
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    return sqrtf((dx * dx) + (dy * dy));
+}
+
+// Core swarm coordination step: Goal Seeking + Collision Avoidance
+void updateSwarm(Robot swarm[], float goalX, float goalY) {
+    float nextX[NUM_ROBOTS];
+    float nextY[NUM_ROBOTS];
+
+    for (int i = 0; i < NUM_ROBOTS; i++) {
+        // 1. Goal-Seeking Vector (Move toward shared target)
+        float distToGoal = getDistance(swarm[i].x, swarm[i].y, goalX, goalY);
+        float vx = 0.0f, vy = 0.0f;
+
+        if (distToGoal > 0.1f) {
+            vx = ((goalX - swarm[i].x) / distToGoal) * STEP_SIZE;
+            vy = ((goalY - swarm[i].y) / distToGoal) * STEP_SIZE;
+        }
+
+        // 2. Separation Rule (Repel from nearby neighbors)
+        for (int j = 0; j < NUM_ROBOTS; j++) {
+            if (i == j) continue; // Skip comparing robot with itself
+
+            float distNeighbor = getDistance(swarm[i].x, swarm[i].y, swarm[j].x, swarm[j].y);
+            
+            if (distNeighbor < SAFE_DIST && distNeighbor > 0.001f) {
+                // Push away from neighbor to avoid collision
+                vx -= ((swarm[j].x - swarm[i].x) / distNeighbor) * STEP_SIZE;
+                vy -= ((swarm[j].y - swarm[i].y) / distNeighbor) * STEP_SIZE;
+            }
+        }
+
+        // Store updated position synchronously
+        nextX[i] = swarm[i].x + vx;
+        nextY[i] = swarm[i].y + vy;
+    }
+
+    // Apply all calculated moves together
+    for (int i = 0; i < NUM_ROBOTS; i++) {
+        swarm[i].x = nextX[i];
+        swarm[i].y = nextY[i];
+    }
+}
+
+int main() {
+    // Initialize 4 robots at starting coordinates
+    Robot swarm[NUM_ROBOTS] = {
+        {1, 0.0f, 0.0f},
+        {2, 1.0f, 0.0f},
+        {3, 0.0f, 1.0f},
+        {4, 8.0f, 8.0f}
+    };
+
+    float targetX = 10.0f, targetY = 10.0f;
+
+    printf("--- Swarm Coordination Simulation ---\n");
+    printf("Shared Target: (%.1f, %.1f)\n\n", targetX, targetY);
+
+    for (int step = 1; step <= MAX_STEPS; step++) {
+        updateSwarm(swarm, targetX, targetY);
+        printf("Step %d:\n", step);
+        for (int i = 0; i < NUM_ROBOTS; i++) {
+            printf("  Robot %d -> (%.2f, %.2f)\n", swarm[i].id, swarm[i].x, swarm[i].y);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
